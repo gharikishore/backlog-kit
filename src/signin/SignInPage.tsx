@@ -18,7 +18,7 @@
 // backlog-kit's components). Override `brandName` + `brandLinkHref`
 // to swap the page header.
 
-import { useEffect, useState, Suspense, type ReactNode } from "react";
+import { useEffect, useState, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 

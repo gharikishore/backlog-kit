@@ -1,5 +1,5 @@
 import { eq, and, isNotNull } from "drizzle-orm";
-import { intakeItems, auditLog } from "../schema";
+import { intakeItems } from "../schema";
 import { broadcastBacklogChange } from "../lib/backlog-events";
 import { insertAuditEntry } from "../lib/audit";
 import type { AuthAdapter } from "../lib/auth-adapter";

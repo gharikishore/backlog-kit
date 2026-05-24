@@ -35,7 +35,6 @@ import { LinkifiedSeqText } from "./LinkifiedSeqText";
 export function BacklogCard({
   item,
   onTriage,
-  onProvisioned,
   reasoningEditingId,
   summaryDraft,
   reasoningDraft,
@@ -86,7 +85,6 @@ export function BacklogCard({
       category: string | null;
     }>
   ) => Promise<void>;
-  onProvisioned: () => void;
   reasoningEditingId: string | null;
   summaryDraft: string;
   reasoningDraft: string;
