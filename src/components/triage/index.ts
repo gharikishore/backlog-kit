@@ -29,6 +29,11 @@ export type {
   ReasoningSectionsProps,
 } from "./kit-adapter";
 
+// Default adapter + drop-in page (intake #986).
+export { defaultBacklogUIAdapter } from "./default-adapter";
+export { BacklogPage } from "./BacklogPage";
+export type { BacklogPageProps } from "./BacklogPage";
+
 export { BacklogCard } from "./BacklogCard";
 export { BacklogViewsToolbar } from "./BacklogViewsToolbar";
 export { PaginationBar } from "./PaginationBar";

@@ -12,8 +12,9 @@
 // route gate (consumer-supplied) should redirect before mounting this.
 
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
-import { LogOut, ShieldHalf, BookOpen } from "lucide-react";
+import { ArrowLeft, LogOut, ShieldHalf, BookOpen } from "lucide-react";
 
 export type AdminHeaderProps = {
   /** Display name in the brand link. Default: "App". */
@@ -22,6 +23,8 @@ export type AdminHeaderProps = {
   brandHref?: string;
   /** Subtitle next to the brand. Default: "Operate the platform". */
   subtitleText?: string;
+  /** Admin home route — back-button target on sub-routes. Default: "/admin". */
+  adminHomeHref?: string;
   /** /me endpoint (returns user + profile). Default: "/api/me". */
   meEndpoint?: string;
   /** Sign-out POST endpoint. Default: "/api/logout". */
@@ -44,6 +47,7 @@ export function AdminHeader({
   brandName = "App",
   brandHref = "/admin",
   subtitleText = "Operate the platform",
+  adminHomeHref = "/admin",
   meEndpoint = "/api/me",
   logoutEndpoint = "/api/logout",
   secondaryLink = { href: "/handbook", label: "Handbook" },
@@ -52,6 +56,16 @@ export function AdminHeader({
   const [email, setEmail] = useState<string | null>(null);
   const [handle, setHandle] = useState<string | null>(null);
   const [displayName, setDisplayName] = useState<string | null>(null);
+
+  // Intake #985: auto-render back-button on /admin/* sub-routes.
+  // Detect path inside the admin tree but not the home itself; on the
+  // home page (or on routes outside the admin tree entirely) the back
+  // arrow stays hidden.
+  const pathname = usePathname();
+  const showBack =
+    pathname != null &&
+    pathname !== adminHomeHref &&
+    pathname.startsWith(adminHomeHref + "/");
 
   useEffect(() => {
     let cancelled = false;
@@ -83,6 +97,20 @@ export function AdminHeader({
           >
             {brandName}
           </Link>
+          {showBack && (
+            <Link
+              href={adminHomeHref}
+              aria-label="Back to admin"
+              title="Back to admin"
+              className="flex items-center gap-1 no-underline hover:opacity-70 transition-opacity flex-shrink-0"
+              style={{ color: "var(--ft-text-soft)" }}
+            >
+              <ArrowLeft size={14} aria-hidden="true" />
+              <span className="font-mono text-[11px] uppercase tracking-[0.18em] hidden sm:inline">
+                Back
+              </span>
+            </Link>
+          )}
           <div className="flex items-center gap-2 pl-3 sm:pl-4 min-w-0 border-l" style={{ borderColor: "var(--ft-hair-strong)" }}>
             <ShieldHalf size={13} style={{ color: "var(--ft-accent-bug)" }} className="flex-shrink-0" />
             <span className="font-mono text-[11px] uppercase tracking-[0.18em] hidden md:inline" style={{ color: "var(--ft-text-soft)" }}>

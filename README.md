@@ -41,6 +41,7 @@ reservation but is empty; its functionality lives here.
 | **Lib helpers** | `screenshot-r2.ts` (content-addressable R2 uploader), `audit.ts` (impersonation-aware audit log), `backlog-events.ts` (in-process SSE), `auth-adapter.ts` (consumer-supplied auth contract) |
 | **API handlers** | Next-agnostic POST/GET/PATCH handlers for `/api/bugs`, `/api/intake`, `/api/admin/backlog/*`, `/api/screenshots/*` |
 | **Admin UI** | 15 components: `BacklogCard`, `CommentsThread`, `HistoryTimeline`, `NoteEditor`, `BlockStrip`, `StateLozenge`, `AttachmentsStrip`, `LogicalNextStrip`, `RelatedStrip`, `BacklogViewsToolbar`, `PaginationBar`, `FilterChip`, `LinkifiedSeqText`, `NoteDisplay`, `ActionBtn` — wired via `<BacklogUIProvider>` kit adapter |
+| **Drop-in `<BacklogPage />`** | Zero-config admin/backlog page that mounts the rich card-stack UI with a default `BacklogUIAdapter` (themable via `--ft-*` vars; no UI-kit dependency). Consumers mount one component, get specforge-equivalent triage out of the box (intake #986) |
 | **SQL migrations** | Single consolidated `migrations/0000_init.sql` + `scripts/apply-migrations.ts` runner |
 
 ## Peer dependencies
@@ -246,8 +247,34 @@ Mount thin route shims that delegate to the package handlers. See
 `src/app/api/{bugs,intake,admin/backlog/*,screenshots}/route.ts`
 files as the worked example).
 
-The admin/backlog page mounts `<BacklogUIProvider value={kit}>` +
-uses `BacklogCard` from `@local/backlog-kit/components/triage`.
+For the **page itself**, the fastest route is the drop-in:
+
+```tsx
+// app/admin/backlog/page.tsx
+import { BacklogPage } from "@local/backlog-kit/components/triage";
+
+export default function AdminBacklog() {
+  return <BacklogPage />;
+}
+```
+
+That ships the full card-stack UI with state-filter chips, search,
+priority + state + reasoning editing, and a default themable adapter
+— no `<BacklogUIProvider>` wiring required. Override props for custom
+chrome:
+
+```tsx
+<BacklogPage
+  eyebrow="Operations queue"
+  title="Triage."
+  pollIntervalMs={10_000}        // optional auto-refresh
+  defaultStateFilter="accepted"
+/>
+```
+
+Need more (specforge has 939 LOC of custom triage)? Mount
+`<BacklogUIProvider value={yourAdapter}>` + `<BacklogCard>` directly
+— the kit's primitives stay available for full-control consumers.
 
 ## Auth-adapter contract
 
@@ -325,7 +352,7 @@ backlog-kit/
 
 | Status | What |
 |---|---|
-| ✅ | Schemas, lib, capture UI, ReviewCard shell, CSS-variable theming, capture API handlers, admin/backlog API handlers, admin/backlog UI primitives via KitAdapter, SQL migrations, magic-link sign-in (#967), admin chrome (#968), specforge validated (#970), Fiori-style launchpad tile menu (#983 — v1.1) |
+| ✅ | Schemas, lib, capture UI, ReviewCard shell, CSS-variable theming, capture API handlers, admin/backlog API handlers, admin/backlog UI primitives via KitAdapter, SQL migrations, magic-link sign-in (#967), admin chrome (#968), specforge validated (#970), Fiori-style launchpad tile menu (#983 — v1.1), Vellum-aligned `--ft-*` defaults (#984), auto back-button on `/admin/*` sub-routes (#985), drop-in `<BacklogPage />` (#986 — v1.2) |
 | ⏳ | `createBacklog(config)` factory pattern refactor (spec direction from META #947 owner; v2.0) |
 | ⏳ | API contract docs (`docs/api.md` refresh), adoption cookbook (`docs/adoption.md` refresh) |
 | ⏳ | hmbr-starter dry-run refresh against backlog-kit (the original validation was against `gharikishore/feedback-triage` before the rename) |

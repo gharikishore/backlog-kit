@@ -19,8 +19,11 @@
 
 :root {
   /* ── Surfaces ─────────────────────────────────────────── */
-  /* Page background tone (used by the modal canvas). */
-  --ft-surface: #fbf8f1;
+  /* Page background tone (used by the modal canvas, admin pages,
+   * launchpad). Matches specforge's Vellum cream (#F2EDE4) — the
+   * kit ships these defaults so a fresh consumer's /admin surfaces
+   * look right out-of-the-box with zero config (intake #984). */
+  --ft-surface: #f2ede4;
   /* Card / aside / article container background. */
   --ft-card: #faf6ee;
   /* Modal backdrop / scrim. */
