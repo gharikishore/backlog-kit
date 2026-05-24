@@ -1,0 +1,68 @@
+/* @local/backlog-kit — default theme.
+ *
+ * Defines every CSS variable the package's components reference.
+ * Consumers either import this file at the root layer:
+ *
+ *   @import "@local/backlog-kit/components/default-theme.css";
+ *
+ * …or define the same variables themselves to fully override the look.
+ * Mix-and-match works: import this file first, then override individual
+ * variables in your own globals.css.
+ *
+ * Naming convention: `--ft-*` (ft = feedback-triage). Short prefix to
+ * keep arbitrary-value Tailwind classes readable: `bg-[var(--ft-card)]`.
+ *
+ * Scope: ONLY visual tokens. Spacing, sizing, font-family, radii are
+ * intentionally NOT variables — those are structural and should stay
+ * consistent across consumers.
+ */
+
+:root {
+  /* ── Surfaces ─────────────────────────────────────────── */
+  /* Page background tone (used by the modal canvas). */
+  --ft-surface: #fbf8f1;
+  /* Card / aside / article container background. */
+  --ft-card: #faf6ee;
+  /* Modal backdrop / scrim. */
+  --ft-overlay: rgba(11, 18, 32, 0.6);
+
+  /* ── Foreground / text ──────────────────────────────── */
+  /* Primary ink (body text, headings). */
+  --ft-ink: #1a1814;
+  /* Secondary text (paragraphs, descriptions). */
+  --ft-text-muted: #3a3934;
+  /* Tertiary / hint text. */
+  --ft-text-soft: #5a5750;
+
+  /* ── Hairlines ──────────────────────────────────────── */
+  --ft-hair: rgba(26, 24, 20, 0.12);
+  --ft-hair-strong: rgba(26, 24, 20, 0.2);
+
+  /* ── Floating bubble (bug-feedback pill) ────────────── */
+  --ft-bubble-bg: #1a1814;
+  --ft-bubble-fg: #f5e9c8;
+  --ft-bubble-border: rgba(201, 166, 79, 0.5);
+  --ft-bubble-ring: rgba(201, 166, 79, 0.6);
+
+  /* ── Per-kind accent colors (modal primary buttons) ─── */
+  --ft-accent-bug: #c5421b;
+  --ft-accent-feedback: #1a1814;
+  --ft-accent-idea: #7a4f1f;
+
+  /* ── Status ─────────────────────────────────────────── */
+  --ft-success: #226633;
+  --ft-success-on: #ffffff;
+
+  /* ── Inputs ─────────────────────────────────────────── */
+  --ft-input-bg: #ffffff;
+  --ft-input-border: rgba(26, 24, 20, 0.2);
+
+  /* ── Alerts / errors ────────────────────────────────── */
+  --ft-error-bg: #fde7e7;
+  --ft-error-fg: #7a1f1f;
+
+  /* ── Shadows ────────────────────────────────────────── */
+  --ft-shadow-soft: 0 1px 0 rgba(26, 24, 20, 0.04);
+  --ft-shadow-modal: 0 24px 60px rgba(0, 0, 0, 0.35);
+  --ft-shadow-bubble: 0 4px 16px rgba(0, 0, 0, 0.25);
+}

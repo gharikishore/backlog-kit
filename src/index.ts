@@ -1,20 +1,11 @@
-// Public barrel — top-level kit exports.
+// @local/backlog-kit — barrel entry.
 //
-// SCAFFOLDING ONLY (#955 of META #947). Implementations land in #956
-// (schema), #957 (core), #958 (routes), #959 (UI), #960 (Specforge
-// migration validates), #961 (docs).
-//
-// Until then, importing this kit will fail with "not implemented" runtime
-// errors. See README.md + the spec at specforge:docs/backlog-kit-spec.md.
+// Re-exports schema + lib. Components are NOT re-exported here because
+// "use client" boundaries shouldn't be pulled into server-side imports
+// of the barrel — consumers should import components via the explicit
+// subpath: `import { IntakeWidget } from "@local/backlog-kit/components/capture";`
 
-export type {
-  BacklogConfig,
-  BacklogKit,
-  IntakeState,
-  BlockStatus,
-  IntakeRow,
-  CommentRow,
-  TriageUpdates,
-} from "./types.js";
-
-export { createBacklog } from "./create.js";
+export * from "./schema";
+export * from "./lib";
+export const PACKAGE_NAME = "@local/backlog-kit";
+export const PACKAGE_VERSION = "1.0.0";
