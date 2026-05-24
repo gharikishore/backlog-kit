@@ -1,7 +1,7 @@
 {
   "name": "@gharikishore/backlog-kit",
-  "version": "0.1.0",
-  "description": "Reusable backlog / intake-tracking library for Next.js + Drizzle apps. Pluggable categories, kinds, schema names, auth, and UI theme. Ships state machine + ship-gate + META-child relationships + comments + SSE-driven UI refresh.",
+  "version": "1.1.0",
+  "description": "Drop-in admin + bug-capture + triage system for any Next.js + Postgres app. Floating Bug · Feedback widget · magic-link sign-in · admin chrome (AdminHeader/AdminLayout) · Fiori-style launchpad tile menu · full backlog dashboard with state machine + ship-gate + audit log · bundled schema + migrations.",
   "type": "module",
   "main": "./src/index.ts",
   "types": "./src/index.ts",

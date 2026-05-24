@@ -32,7 +32,8 @@ reservation but is empty; its functionality lives here.
 | Layer | Provided |
 |---|---|
 | **Sign-in** | Magic-link `<SignInPage />` with configurable brand + endpoints + dev-mode quick-login |
-| **Admin chrome** | `<AdminHeader />` top bar + `<AdminLayout />` wrapper. Consumer supplies app launcher tile grid |
+| **Admin chrome** | `<AdminHeader />` top bar + `<AdminLayout />` wrapper |
+| **Launchpad** | `<TileMenu />` Fiori-style tile menu for `/admin` landings — icon + label + hint + KPI stats per tile, flat or section-grouped layout, optional drag-to-reorder with per-device localStorage persistence (intake #983) |
 | **Capture** | `<IntakeWidget />` floating pill + modal, `<ErrorReporter />` for window errors |
 | **Shell** | `<ReviewCard />` 2-column layout with compact/expanded modes |
 | **Theme** | 21 `--ft-*` CSS variables — recolor everything without code edits |
@@ -67,7 +68,7 @@ reservation but is empty; its functionality lives here.
 | `CRON_SECRET` | Bearer for cron routes | If you wire `/api/cron/audit-log-*` |
 | auth-backend env (e.g. `NEXT_PUBLIC_SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`) | Your sign-in flow | Magic-link `/signin` (consumer-supplied auth) |
 
-## Quick start (9 steps)
+## Quick start (10 steps)
 
 ### 1. Add the submodule
 
@@ -181,7 +182,64 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 are consumer-supplied — the kit only calls them. See specforge's
 implementations as worked examples.
 
-### 9. Wire the API routes + admin/backlog page
+### 9. Mount the admin launchpad (optional)
+
+The kit ships a Fiori-style tile menu for `/admin` landings. Drop
+`<TileMenu />` in `app/admin/page.tsx` and feed it the surfaces you
+want admins to reach:
+
+```tsx
+// app/admin/page.tsx
+import { TileMenu, type Tile } from "@local/backlog-kit/components/launchpad";
+import { ListChecks, UserCog, Layers } from "lucide-react";
+
+const ICON_PROPS = { size: 40, strokeWidth: 1.5 } as const;
+
+export default function AdminLanding() {
+  const tiles: Tile[] = [
+    {
+      href: "/admin/backlog",
+      iconElement: <ListChecks {...ICON_PROPS} />,
+      label: "Backlog",
+      hint: "Triage incoming bugs, feedback, and ideas.",
+      stats: [
+        { value: 8, label: "Pending" },
+        { value: 4, label: "Accepted" },
+        { value: 2, label: "Ready" },
+      ],
+    },
+    {
+      href: "/admin/impersonate",
+      iconElement: <UserCog {...ICON_PROPS} />,
+      label: "Impersonate",
+      hint: "Act as another user — full role-gated view.",
+    },
+    {
+      href: "/admin/sessions",
+      iconElement: <Layers {...ICON_PROPS} />,
+      label: "Sessions",
+      hint: "Live state for each parallel Claude session.",
+    },
+  ];
+
+  return (
+    <TileMenu
+      title="Admin"
+      subtitle="Operate the platform. More tiles will appear here as surfaces grow."
+      brandKicker="YourApp"
+      tiles={tiles}
+      orderKey="admin-tiles"
+    />
+  );
+}
+```
+
+`stats` is optional — omit it for a pure launch tile. `orderKey`
+enables drag-to-reorder + per-device persistence. For section-grouped
+layouts (e.g. `/studio` landings with role-based groups), pass
+`groups: TileGroup[]` instead of `tiles`.
+
+### 10. Wire the API routes + admin/backlog page
 
 Mount thin route shims that delegate to the package handlers. See
 `docs/adoption.md` for the complete cookbook (or follow specforge's
@@ -256,6 +314,7 @@ backlog-kit/
       capture/                        # IntakeWidget, ErrorReporter
       triage/                         # ReviewCard, BacklogCard, CommentsThread, NoteEditor, BlockStrip, … (15 components) + BacklogUIAdapter context
       admin-chrome/                   # AdminHeader, AdminLayout (intake #968)
+      launchpad/                      # TileMenu — Fiori-style tile grid (intake #983)
     types/                            # public TS types
   migrations/                         # 0000_init.sql (consolidated schema)
   scripts/                            # apply-migrations.ts runner
@@ -266,7 +325,7 @@ backlog-kit/
 
 | Status | What |
 |---|---|
-| ✅ | Schemas, lib, capture UI, ReviewCard shell, CSS-variable theming, capture API handlers, admin/backlog API handlers, admin/backlog UI primitives via KitAdapter, SQL migrations, magic-link sign-in (#967), admin chrome (#968), specforge validated (#970) |
+| ✅ | Schemas, lib, capture UI, ReviewCard shell, CSS-variable theming, capture API handlers, admin/backlog API handlers, admin/backlog UI primitives via KitAdapter, SQL migrations, magic-link sign-in (#967), admin chrome (#968), specforge validated (#970), Fiori-style launchpad tile menu (#983 — v1.1) |
 | ⏳ | `createBacklog(config)` factory pattern refactor (spec direction from META #947 owner; v2.0) |
 | ⏳ | API contract docs (`docs/api.md` refresh), adoption cookbook (`docs/adoption.md` refresh) |
 | ⏳ | hmbr-starter dry-run refresh against backlog-kit (the original validation was against `gharikishore/feedback-triage` before the rename) |

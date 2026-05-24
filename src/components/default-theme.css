@@ -49,6 +49,17 @@
   --ft-accent-feedback: #1a1814;
   --ft-accent-idea: #7a4f1f;
 
+  /* Generic accent — used by neutral surfaces that don't belong to
+   * a specific bug/feedback/idea track (e.g. launchpad tiles, admin
+   * chrome hovers). Defaults to the bug accent for visual continuity
+   * with the floating widget; consumers can override independently. */
+  --ft-accent: #c5421b;
+  /* Pre-baked rgba of --ft-accent at 30% — used for drag-target
+   * focus rings on launchpad tiles. (Tailwind's arbitrary-color
+   * /alpha syntax doesn't compose cleanly with var() in all
+   * browsers, hence the dedicated token.) */
+  --ft-accent-ring: rgba(197, 66, 27, 0.3);
+
   /* ── Status ─────────────────────────────────────────── */
   --ft-success: #226633;
   --ft-success-on: #ffffff;
@@ -65,4 +76,7 @@
   --ft-shadow-soft: 0 1px 0 rgba(26, 24, 20, 0.04);
   --ft-shadow-modal: 0 24px 60px rgba(0, 0, 0, 0.35);
   --ft-shadow-bubble: 0 4px 16px rgba(0, 0, 0, 0.25);
+  /* Two-layer card shadow used by launchpad tiles on hover + by
+   * the drag-target ring. Matches specforge's Vellum shadow-kit. */
+  --ft-shadow-card: 0 1px 2px rgba(26, 24, 20, 0.06), 0 8px 24px rgba(26, 24, 20, 0.1);
 }
