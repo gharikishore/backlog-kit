@@ -1,56 +1,272 @@
-# @gharikishore/backlog-kit
+# @local/backlog-kit
 
-Reusable backlog / intake-tracking library for Next.js + Drizzle apps. One admin (or team) files intakes, triages them through a state machine, and ships completed work via a deliberate ship-gate. Comments, META + child relationships, block-status tracking, audit-log integration, and SSE-driven UI refresh — all themable.
+Drop-in admin + bug-capture + triage system for any Next.js + Postgres app.
+Floating "Bug · Feedback" widget, magic-link sign-in, `/admin` chrome,
+full backlog dashboard with state machine + ship-gate + audit log,
+plus the backing schema + migrations.
 
-**Status:** v0.1.0 — **scaffolding only.** Implementation follows the spec in [`specforge:docs/backlog-kit-spec.md`](https://github.com/gharikishore/specforge/blob/main/docs/backlog-kit-spec.md) and is sliced across intakes #955-#961 of META #947 in the Specforge backlog.
+**v1.0.0** — full implementation, extracted from
+[`gharikishore/specforge`](https://github.com/gharikishore/specforge)
+and validated end-to-end on two consumers (specforge + hmbr-starter
+dry-run).
 
-**Canonical implementation reference:** [`gharikishore/specforge`](https://github.com/gharikishore/specforge) — the working app this kit was extracted from.
+## Heritage
 
-## Phase 2 progress
+This kit consolidates work originally extracted under two parallel
+metas: feedback-triage (META #930, capture + triage) and admin-chassis
+(META #964, sign-in + admin chrome). Per user direction (2026-05-24),
+they ship as **one integrated package** — in practice nobody wants
+capture without triage, triage without admin chrome, or admin chrome
+without auth. The `createBacklog(config)` factory pattern from this
+kit's original scaffolding spec is a future v2.0 refactor; v1.0 uses
+direct exports + the AuthAdapter / BacklogUIAdapter context patterns
+established during the feedback-triage extraction.
 
-- [x] **#954 — Spec** ([`docs/backlog-kit-spec.md`](https://github.com/gharikishore/specforge/blob/main/docs/backlog-kit-spec.md) in Specforge)
-- [x] **#955 — Scaffolding** ← this commit
-- [ ] **#956 — Schema layer** (`createBacklogSchema` + `createBacklogSchemaMigrations`)
-- [ ] **#957 — Core API** (`createBacklog` factory)
-- [ ] **#958 — Route factories** (CRUD + ship + comments + SSE)
-- [ ] **#959 — UI components** (the big lift: BacklogCard, NoteEditor, BlockStrip, CommentsThread, RelatedStrip, LogicalNextStrip, ReviewCard layout primitive, HistoryTimeline, theme provider)
-- [ ] **#960 — Migrate Specforge** to consume the kit (coordinated with feedback-triage submodule from META #930)
-- [ ] **#961 — Docs** (api.md / adoption.md / migration.md)
+`gharikishore/feedback-triage` is deprecated as of 2026-05-24 —
+consumers should use `@local/backlog-kit` directly.
+`gharikishore/admin-chassis` scaffold repo is preserved as a name
+reservation but is empty; its functionality lives here.
 
-Until Phase 2 lands, this repo is **not consumable**. Use Specforge's inline backlog system directly.
+## What you get
 
-## Why
+| Layer | Provided |
+|---|---|
+| **Sign-in** | Magic-link `<SignInPage />` with configurable brand + endpoints + dev-mode quick-login |
+| **Admin chrome** | `<AdminHeader />` top bar + `<AdminLayout />` wrapper. Consumer supplies app launcher tile grid |
+| **Capture** | `<IntakeWidget />` floating pill + modal, `<ErrorReporter />` for window errors |
+| **Shell** | `<ReviewCard />` 2-column layout with compact/expanded modes |
+| **Theme** | 21 `--ft-*` CSS variables — recolor everything without code edits |
+| **Schema** | Drizzle schemas + bundled SQL migrations: `intake_items` (sequence + auto-unblock trigger), `bug_reports`, `intake_item_comments`, `intake_item_attachments`, `intake_item_links`, `audit_log` (RANGE-partitioned), `agent_sessions`, `agent_session_activities`, `agent_session_dependencies`, `system_errors` |
+| **Lib helpers** | `screenshot-r2.ts` (content-addressable R2 uploader), `audit.ts` (impersonation-aware audit log), `backlog-events.ts` (in-process SSE), `auth-adapter.ts` (consumer-supplied auth contract) |
+| **API handlers** | Next-agnostic POST/GET/PATCH handlers for `/api/bugs`, `/api/intake`, `/api/admin/backlog/*`, `/api/screenshots/*` |
+| **Admin UI** | 15 components: `BacklogCard`, `CommentsThread`, `HistoryTimeline`, `NoteEditor`, `BlockStrip`, `StateLozenge`, `AttachmentsStrip`, `LogicalNextStrip`, `RelatedStrip`, `BacklogViewsToolbar`, `PaginationBar`, `FilterChip`, `LinkifiedSeqText`, `NoteDisplay`, `ActionBtn` — wired via `<BacklogUIProvider>` kit adapter |
+| **SQL migrations** | Single consolidated `migrations/0000_init.sql` + `scripts/apply-migrations.ts` runner |
 
-Across multiple projects (Specforge, HmBr Impact, HmBr Store, future apps), backlog / intake / state-machine tracking has the same shape:
-- File an intake (bug, feedback, idea, signup, etc.)
-- Triage with reasoning
-- Move through `pending → accepted → ready_to_ship → shipped` (plus declined / duplicate terminals)
-- Ship-gate enforcement: explicit `ship_approved_at` stamp before commit
-- META + child relationships for epic-style decomposition
-- Block-status: `parked` / `blocked` until another ticket resolves
-- Comments / discussion thread
-- Audit-log integration
+## Peer dependencies
 
-The kit packages this 80% as a reusable library + exposes the project-specific 20% (category/kind enums, schema names, UI theme, candidate filter) as configuration. Same pattern as [`@gharikishore/impersonation-kit`](https://github.com/gharikishore/impersonation-kit).
+```json
+{
+  "next": "^15.0.0 || ^16.0.0",
+  "react": "^18.0.0 || ^19.0.0",
+  "react-dom": "^18.0.0 || ^19.0.0",
+  "drizzle-orm": "^0.45.0",
+  "postgres": "^3.4.0",
+  "@aws-sdk/client-s3": "^3.0.0",
+  "@aws-sdk/s3-request-presigner": "^3.0.0",
+  "lucide-react": "^0.500.0",
+  "html2canvas": "^1.4.1"
+}
+```
 
-## Architecture (planned)
+## Required env vars
 
-**Pluggable surfaces:**
-- `tableNames` — your schema's intake / audit / comments table names
-- `categories` + `kinds` — your enum vocabulary
-- `sessionResolver` / `isAdmin` / `userById` — your auth model
-- `auditWriter` — your audit-log helper (delegate to feedback-triage or whatever you have)
-- `sessionContext` — optional session-tracking integration (for "via session X" attribution)
-- `sseBroadcast` — your SSE plumbing
-- `theme` — design tokens
+| Variable | Purpose | Required for |
+|---|---|---|
+| `DATABASE_URL` | Postgres connection | Everything |
+| `R2_*` (account id, access key, secret, endpoint, bucket) | Cloudflare R2 | Screenshot uploads |
+| `CRON_SECRET` | Bearer for cron routes | If you wire `/api/cron/audit-log-*` |
+| auth-backend env (e.g. `NEXT_PUBLIC_SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`) | Your sign-in flow | Magic-link `/signin` (consumer-supplied auth) |
 
-**Fixed (the design):**
-- Six-state machine: pending / accepted / ready_to_ship / shipped / declined / duplicate
-- Ship-gate: `ship_approved_at` must be stamped before shipping
-- META-child via `parent_intake_item_id` + `blocked_by_intake_item_id`
-- Audit auto-stamp: every state change writes an audit row via consumer's `auditWriter`
-- SSE: events fire on every server-side write; UI refreshes with `preserveOrder: true`
+## Quick start (9 steps)
 
-## Design history
+### 1. Add the submodule
 
-Spec doc + design decisions: [`specforge:docs/backlog-kit-spec.md`](https://github.com/gharikishore/specforge/blob/main/docs/backlog-kit-spec.md). Read that first for the full contract.
+```bash
+git submodule add https://github.com/gharikishore/backlog-kit.git .claude/kits/backlog
+```
+
+Pairs naturally with [`gharikishore/impersonation-kit`](https://github.com/gharikishore/impersonation-kit) — add that too if you need admin impersonation with audit auto-stamping.
+
+### 2. Wire the path alias
+
+```jsonc
+// tsconfig.json
+{
+  "compilerOptions": {
+    "paths": {
+      "@/*": ["./src/*"],
+      "@local/backlog-kit": ["./.claude/kits/backlog/src/index.ts"],
+      "@local/backlog-kit/*": ["./.claude/kits/backlog/src/*"]
+    }
+  }
+}
+```
+
+### 3. Tell Tailwind about the submodule
+
+```js
+content: [
+  "./src/**/*.{js,ts,jsx,tsx,mdx}",
+  "./.claude/kits/backlog/src/**/*.{js,ts,jsx,tsx}",
+],
+```
+
+### 4. Tell Turbopack to transpile
+
+```js
+// next.config.js
+const nextConfig = {
+  transpilePackages: ["@local/backlog-kit"],
+};
+```
+
+### 5. Define the theme variables
+
+Copy the `--ft-*` block from `.claude/kits/backlog/src/components/default-theme.css`
+into your `globals.css` and tune to your brand.
+
+### 6. Run the migrations
+
+```bash
+DATABASE_URL=postgres://... npx tsx .claude/kits/backlog/scripts/apply-migrations.ts
+```
+
+### 7. Mount the capture components
+
+```tsx
+// app/layout.tsx
+import { ErrorReporter, IntakeWidget } from "@local/backlog-kit/components/capture";
+
+export default function RootLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <html>
+      <body>
+        <ErrorReporter />
+        <IntakeWidget />
+        {children}
+      </body>
+    </html>
+  );
+}
+```
+
+### 8. Mount the sign-in + admin chrome
+
+```tsx
+// app/signin/page.tsx
+import { SignInPage } from "@local/backlog-kit/signin";
+
+export default function YourSignInPage() {
+  return (
+    <SignInPage
+      brandName="YourApp"
+      signinEndpoint="/api/auth/signin"
+      devSigninEndpoint="/api/auth/dev-signin"  // optional, localhost-only
+    />
+  );
+}
+```
+
+```tsx
+// app/admin/layout.tsx
+import { AdminHeader } from "@local/backlog-kit/components/admin-chrome";
+
+export default function AdminLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <>
+      <AdminHeader
+        brandName="YourApp"
+        subtitleText="Operate the platform"
+        meEndpoint="/api/me"
+        logoutEndpoint="/api/logout"
+        secondaryLink={{ href: "/docs", label: "Docs" }}
+      />
+      {children}
+    </>
+  );
+}
+```
+
+`/api/me`, `/api/logout`, `/api/auth/signin`, `/api/auth/dev-signin`
+are consumer-supplied — the kit only calls them. See specforge's
+implementations as worked examples.
+
+### 9. Wire the API routes + admin/backlog page
+
+Mount thin route shims that delegate to the package handlers. See
+`docs/adoption.md` for the complete cookbook (or follow specforge's
+`src/app/api/{bugs,intake,admin/backlog/*,screenshots}/route.ts`
+files as the worked example).
+
+The admin/backlog page mounts `<BacklogUIProvider value={kit}>` +
+uses `BacklogCard` from `@local/backlog-kit/components/triage`.
+
+## Auth-adapter contract
+
+```ts
+import type { AuthAdapter } from "@local/backlog-kit/lib/auth-adapter";
+
+export const adapter: AuthAdapter = {
+  readSessionUser: async (req) => {
+    const session = await getMySession(req);
+    if (!session) return null;
+    return {
+      id: session.userId,
+      systemRole: session.role,   // "admin" gates admin routes
+      label: session.email,
+    };
+  },
+  getImpersonatorId: async () => null,  // wire when you have impersonation
+};
+```
+
+Pairs naturally with [`gharikishore/impersonation-kit`](https://github.com/gharikishore/impersonation-kit):
+specforge wires `getImpersonatorId` from impersonation-kit so audit
+rows auto-stamp the real admin even during impersonation.
+
+## Updating after upstream changes
+
+```bash
+# In the canonical repo:
+git add . && git commit -m "feat: …" && git push
+
+# In any consumer:
+git -C .claude/kits/backlog fetch origin main
+git -C .claude/kits/backlog checkout main
+git -C .claude/kits/backlog pull
+git add .claude/kits/backlog
+git commit -m "bump backlog-kit submodule to <sha>"
+```
+
+Vercel deploys auto-clone submodules at build time.
+
+## Validated consumers
+
+| Project | Stack | Status | Notes |
+|---|---|---|---|
+| **specforge** | Next 16 + Drizzle + Supabase + R2 | Full integration | Source-of-truth extractor + smoke harnesses (capture: 8/8, chrome: 8/8) |
+| **hmbr-starter** | Next 15 + Prisma + NextAuth | Dry-run import (7/7) | Submodule + tsconfig paths + Tailwind content + brand-themed `--ft-*` vars all wired on first try (validated 2026-05-24) |
+| **hmbrimpact-site** | Static HTML/CSS/JS | Not applicable | Static site — out of scope for this kit |
+
+## Repo layout
+
+```
+backlog-kit/
+  README.md
+  package.json                        # @local/backlog-kit
+  tsconfig.json
+  src/
+    index.ts                          # barrel (schema + lib)
+    schema/                           # Drizzle table defs
+    lib/                              # screenshot R2, audit, backlog events, auth-adapter
+    api/                              # framework-agnostic Response-returning handlers
+    signin/                           # SignInPage (intake #967)
+    components/
+      default-theme.css               # 21 --ft-* CSS variables
+      capture/                        # IntakeWidget, ErrorReporter
+      triage/                         # ReviewCard, BacklogCard, CommentsThread, NoteEditor, BlockStrip, … (15 components) + BacklogUIAdapter context
+      admin-chrome/                   # AdminHeader, AdminLayout (intake #968)
+    types/                            # public TS types
+  migrations/                         # 0000_init.sql (consolidated schema)
+  scripts/                            # apply-migrations.ts runner
+  docs/                               # adoption / migration / api
+```
+
+## Roadmap
+
+| Status | What |
+|---|---|
+| ✅ | Schemas, lib, capture UI, ReviewCard shell, CSS-variable theming, capture API handlers, admin/backlog API handlers, admin/backlog UI primitives via KitAdapter, SQL migrations, magic-link sign-in (#967), admin chrome (#968), specforge validated (#970) |
+| ⏳ | `createBacklog(config)` factory pattern refactor (spec direction from META #947 owner; v2.0) |
+| ⏳ | API contract docs (`docs/api.md` refresh), adoption cookbook (`docs/adoption.md` refresh) |
+| ⏳ | hmbr-starter dry-run refresh against backlog-kit (the original validation was against `gharikishore/feedback-triage` before the rename) |
