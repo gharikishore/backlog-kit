@@ -39,7 +39,10 @@ import { requireAdmin, json } from "./_shared";
 // + authorUserId. Consumer's shim enriches authorLabel from its own
 // user table.
 
-const ALLOWED_PAGE_SIZES = new Set([10, 20, 50, 100]);
+// Allow up to 1000 — consumers (specforge intake #1026) want to drop
+// the pagination UI entirely and render all tickets in one scroll. 1000
+// is the safe DOM-render ceiling; beyond that input lag becomes a risk.
+const ALLOWED_PAGE_SIZES = new Set([10, 20, 50, 100, 200, 500, 1000]);
 
 type SortMode = "default" | "priority" | "newest" | "oldest" | "recent";
 
