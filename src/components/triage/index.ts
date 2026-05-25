@@ -37,6 +37,11 @@ export type { BacklogPageProps } from "./BacklogPage";
 export { BacklogCard } from "./BacklogCard";
 export { BacklogViewsToolbar } from "./BacklogViewsToolbar";
 export { PaginationBar } from "./PaginationBar";
+// Specforge intake #1026 (2026-05-25): single-scroll alternatives to
+// PaginationBar — used by the canonical BacklogPage mount. PaginationBar
+// stays exported for any consumer that still wants per-page pagination.
+export { QueueCountHeader } from "./QueueCountHeader";
+export { QueueCapNotice } from "./QueueCapNotice";
 export { FilterChip } from "./FilterChip";
 export { StateLozenge } from "./StateLozenge";
 export { ActionBtn } from "./ActionBtn";

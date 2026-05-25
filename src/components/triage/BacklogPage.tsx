@@ -38,9 +38,19 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { BacklogUIProvider } from "./kit-adapter";
 import { BacklogCard } from "./BacklogCard";
+import { QueueCountHeader } from "./QueueCountHeader";
+import { QueueCapNotice } from "./QueueCapNotice";
 import { defaultBacklogUIAdapter } from "./default-adapter";
 import type { BacklogUIAdapter } from "./kit-adapter";
 import type { Item } from "../../types/backlog";
+
+// Specforge intake #1026 (2026-05-25): default pageSize for the
+// canonical kit mount. Raised from 100 → 200 to match the
+// admin-backlog-list endpoint's new cap. Beyond this, the QueueCapNotice
+// footer surfaces "showing first N of M — refine filters" so the cap
+// is never silent. The kit endpoint allows up to 1000 (cap raised in
+// the same intake) so consumers with virtualization can lift it.
+const DEFAULT_PAGE_SIZE = 200;
 
 // ── Public props ─────────────────────────────────────────────────────
 
@@ -100,6 +110,7 @@ export function BacklogPage({
   const [stateFilter, setStateFilter] = useState<StateFilter>(defaultStateFilter);
   const [search, setSearch] = useState("");
   const [items, setItems] = useState<Item[] | null>(null);
+  const [total, setTotal] = useState<number>(0);
   const [error, setError] = useState<string | null>(null);
 
   // ── Editing state — flat so BacklogCard's per-id editors can drive in
@@ -112,11 +123,14 @@ export function BacklogPage({
   const [reasoningDraft, setReasoningDraft] = useState("");
 
   // ── Data fetch ─────────────────────────────────────────────────
+  // Specforge intake #1026: single-shot fetch up to DEFAULT_PAGE_SIZE
+  // rows. No pagination UI; the QueueCapNotice below surfaces the cap
+  // when the queue exceeds it.
   const refresh = useCallback(async () => {
     try {
       const params = new URLSearchParams();
       if (stateFilter !== "all") params.set("state", stateFilter);
-      params.set("pageSize", "100");
+      params.set("pageSize", String(DEFAULT_PAGE_SIZE));
       const r = await fetch(`${apiBase}?${params}`, {
         cache: "no-store",
         credentials: "include",
@@ -128,6 +142,7 @@ export function BacklogPage({
       }
       setError(null);
       setItems(body.items ?? []);
+      if (typeof body.total === "number") setTotal(body.total);
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     }
@@ -413,6 +428,11 @@ export function BacklogPage({
             </div>
           )}
 
+          {/* Specforge intake #1026: count header above the stack. */}
+          {visibleItems && visibleItems.length > 0 && (
+            <QueueCountHeader shown={visibleItems.length} total={total} />
+          )}
+
           {/* Card stack */}
           {visibleItems && visibleItems.length > 0 && (
             <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
@@ -451,6 +471,12 @@ export function BacklogPage({
                 />
               ))}
             </div>
+          )}
+
+          {/* Specforge intake #1026: cap notice — only renders when the
+              endpoint capped the result set. */}
+          {visibleItems && total > visibleItems.length && (
+            <QueueCapNotice shown={visibleItems.length} total={total} />
           )}
         </div>
       </div>
