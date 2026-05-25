@@ -1,10 +1,16 @@
 "use client";
 import { Ban, PauseCircle } from "lucide-react";
 import { useBacklogUI } from "./kit-adapter";
+import { normalizeBlockStatus } from "../../types/backlog";
 
 // Horizontal block-status strip in the card body (intake #140).
 // Replaces the old aside-side BlockBtn + header parked/blocked pill —
 // centralizes "this ticket is blocked / parked / not" into one row.
+//
+// Consumer #927 hardening: every read of `status` runs through
+// normalizeBlockStatus so any future schema drift (an unknown enum value
+// reaching this component) renders as "no block" instead of silently
+// falling through to "Parked".
 
 export function BlockStrip({
   status,
@@ -30,20 +36,21 @@ export function BlockStrip({
   onSubmit: () => void;
 }) {
   const { Button, Lozenge } = useBacklogUI();
+  const safeStatus = normalizeBlockStatus(status);
   return (
     <div
       data-block-strip
       className="mt-6 mb-3 px-3 py-2 border border-hair rounded-kit bg-ink/[0.03] flex flex-col gap-1.5 font-sans"
     >
       <div className="flex items-center gap-2 flex-wrap text-[11px] uppercase tracking-kicker text-ink/70">
-        {status ? (
+        {safeStatus ? (
           <>
-            <Lozenge tone={status === "blocked" ? "warning" : "info"} icon={status === "blocked" ? <Ban size={11} /> : <PauseCircle size={11} />}>
-              {status === "blocked" ? "Blocked" : "Parked"}
+            <Lozenge tone={safeStatus === "blocked" ? "warning" : "info"} icon={safeStatus === "blocked" ? <Ban size={11} /> : <PauseCircle size={11} />}>
+              {safeStatus === "blocked" ? "Blocked" : "Parked"}
             </Lozenge>
             {blockedBySeq != null ? (
               <span className="normal-case text-ink/75">
-                {status === "blocked" ? "until" : "because of"} #{blockedBySeq}
+                {safeStatus === "blocked" ? "until" : "because of"} #{blockedBySeq}
                 {blockedByTitle && <span className="text-ink/60"> — {blockedByTitle}</span>}
               </span>
             ) : (

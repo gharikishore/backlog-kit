@@ -4,6 +4,7 @@ import { Ban, Check, Copy as CopyIcon, GripVertical, PackageCheck, Pause, PauseC
 import { useBacklogUI } from "./kit-adapter";
 import ReviewCard from "./ReviewCard";
 import type { HistoryEntry, Item } from "../../types/backlog";
+import { normalizeBlockStatus } from "../../types/backlog";
 import { INTAKE_CATEGORIES, STATE_TONE } from "./constants";
 import { iconForKind } from "./constants";
 import { ActionBtn } from "./ActionBtn";
@@ -324,14 +325,18 @@ export function BacklogCard({
   // can see what they're typing — same expand-on-interaction pattern
   // as `blockOpen` and `editingReasoning`.
   const [composingComment, setComposingComment] = useState(false);
+  // Consumer #927: the DB column is plain TEXT; we've seen legacy 'open' rows
+  // slip past the TS contract. normalizeBlockStatus coerces any unknown value
+  // to null, which the draft maps to "" so the select shows "— clear —"
+  // instead of an unselected option that the user can't recover from.
   const [blockStatusDraft, setBlockStatusDraft] = useState<"" | "parked" | "blocked">(
-    item.blockStatus ?? ""
+    normalizeBlockStatus(item.blockStatus) ?? ""
   );
   const [blockSeqDraft, setBlockSeqDraft] = useState<string>(
     item.blockedBySeq != null ? String(item.blockedBySeq) : ""
   );
   useEffect(() => {
-    setBlockStatusDraft(item.blockStatus ?? "");
+    setBlockStatusDraft(normalizeBlockStatus(item.blockStatus) ?? "");
     setBlockSeqDraft(item.blockedBySeq != null ? String(item.blockedBySeq) : "");
   }, [item.blockStatus, item.blockedBySeq]);
 
@@ -473,33 +478,40 @@ export function BacklogCard({
             duplicate / provisioned) — same logic as the BlockStrip
             itself: block tracking is irrelevant after the ticket has
             left the active queue. */}
-        {item.blockStatus && item.state !== "shipped" && item.state !== "declined" && item.state !== "duplicate" && item.state !== "provisioned" && (
-          <button
-            type="button"
-            onClick={() => {
-              if (!blockOpen) setBlockOpen(true);
-              // Defer to next frame so the composer is mounted, then
-              // scroll the article-bottom strip into view.
-              setTimeout(() => {
-                const el = asideRef.current?.parentElement?.querySelector('[data-block-strip]') as HTMLElement | null;
-                el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-              }, 50);
-            }}
-            className={[
-              "flex items-center gap-1.5 px-2.5 py-1.5 mt-2 text-[12px] uppercase tracking-kicker border-l-2 w-full font-sans transition-colors",
-              item.blockStatus === "blocked"
-                ? "text-warning-fg bg-gold/15 border-gold"
-                : "text-navy bg-navy/10 border-navy",
-            ].join(" ")}
-            title={`${item.blockStatus === "blocked" ? "Blocked" : "Parked"}${item.blockedBySeq ? ` (#${item.blockedBySeq})` : ""}. Click to edit.`}
-          >
-            {item.blockStatus === "blocked" ? <Ban size={12} /> : <PauseCircle size={12} />}
-            <span className="truncate">
-              {item.blockStatus === "blocked" ? "Blocked" : "Parked"}
-              {item.blockedBySeq ? ` · #${item.blockedBySeq}` : ""}
-            </span>
-          </button>
-        )}
+        {(() => {
+          // Consumer #927: normalize before render so an invalid runtime
+          // value (e.g. legacy 'open') doesn't fall through to "Parked".
+          const safeBlock = normalizeBlockStatus(item.blockStatus);
+          if (!safeBlock) return null;
+          if (item.state === "shipped" || item.state === "declined" || item.state === "duplicate" || item.state === "provisioned") return null;
+          return (
+            <button
+              type="button"
+              onClick={() => {
+                if (!blockOpen) setBlockOpen(true);
+                // Defer to next frame so the composer is mounted, then
+                // scroll the article-bottom strip into view.
+                setTimeout(() => {
+                  const el = asideRef.current?.parentElement?.querySelector('[data-block-strip]') as HTMLElement | null;
+                  el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }, 50);
+              }}
+              className={[
+                "flex items-center gap-1.5 px-2.5 py-1.5 mt-2 text-[12px] uppercase tracking-kicker border-l-2 w-full font-sans transition-colors",
+                safeBlock === "blocked"
+                  ? "text-warning-fg bg-gold/15 border-gold"
+                  : "text-navy bg-navy/10 border-navy",
+              ].join(" ")}
+              title={`${safeBlock === "blocked" ? "Blocked" : "Parked"}${item.blockedBySeq ? ` (#${item.blockedBySeq})` : ""}. Click to edit.`}
+            >
+              {safeBlock === "blocked" ? <Ban size={12} /> : <PauseCircle size={12} />}
+              <span className="truncate">
+                {safeBlock === "blocked" ? "Blocked" : "Parked"}
+                {item.blockedBySeq ? ` · #${item.blockedBySeq}` : ""}
+              </span>
+            </button>
+          );
+        })()}
         <div className="text-[11px] uppercase tracking-kicker text-ink/55 mt-2 mb-0.5 font-sans">Action</div>
         {/* Terminal-state confirmation pill. The Ship button stamps approval,
             not state, so when state=shipped there's no Ship "active" highlight

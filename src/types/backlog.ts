@@ -1,5 +1,27 @@
 // Shared types for the admin/backlog triage UI.
 
+/**
+ * The only valid runtime values for an item's block_status field.
+ * The DB column is TEXT (specforge migration 0105 added a CHECK constraint
+ * after consumer #927 surfaced 7 legacy rows with block_status='open' that
+ * the UI silently fell through to "Parked"). Consumers SHOULD pass values
+ * through `normalizeBlockStatus()` before rendering — it coerces any
+ * unrecognized value to `null` so a future schema-drift bug can't
+ * masquerade as a stuck Parked state.
+ */
+export type BlockStatus = "parked" | "blocked" | null;
+
+/**
+ * Narrow an unknown runtime `block_status` to the valid contract. Anything
+ * outside {'parked','blocked'} (including 'open', '', undefined, or a future
+ * unknown value) becomes `null`. Used by BlockStrip + BacklogCard so the UI
+ * doesn't fall through to a misleading "Parked" label.
+ */
+export function normalizeBlockStatus(v: unknown): BlockStatus {
+  if (v === "parked" || v === "blocked") return v;
+  return null;
+}
+
 export type DecisionOption = { value: string; label: string; detail?: string };
 
 export type Item = {
