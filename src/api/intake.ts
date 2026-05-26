@@ -183,6 +183,44 @@ export async function handleIntakePost(
   const gapList = Array.isArray(gapRows) ? gapRows : (gapRows as any)[0];
   const gapSeq = gapList?.[0]?.seq;
 
+  // Consumer #1036 (2026-05-26): both insert paths need sequence-drift
+  // recovery. Background: scripts that file intakes with explicit `seq`
+  // values can leave intake_items_seq_seq behind max(seq). When the
+  // default-nextval path then runs (gapless main flow OR gap-race
+  // retry), it gets a value that's already taken → 23505. Before this
+  // fix the retry just re-tried with the same broken sequence and the
+  // user's bug submission failed (specforge prod outage on 2026-05-25).
+  //
+  // insertWithSeqRecovery handles a single 23505: advances the sequence
+  // to max(seq)+1, retries once. A second 23505 propagates (genuine
+  // duplicate, not drift).
+  async function insertWithSeqRecovery(
+    values: NewIntakeItem,
+  ): Promise<{ id: string; seq: number }> {
+    try {
+      const [r] = await deps.db
+        .insert(intakeItems)
+        .values(values)
+        .returning({ id: intakeItems.id, seq: intakeItems.seq });
+      return r;
+    } catch (err) {
+      const code = (err as { code?: string } | null)?.code;
+      if (code !== "23505") throw err;
+      await deps.db.execute(sql`
+        SELECT setval(
+          'intake_items_seq_seq',
+          (SELECT COALESCE(MAX(seq), 0) + 1 FROM intake_items),
+          false
+        )
+      `);
+      const [r] = await deps.db
+        .insert(intakeItems)
+        .values(values)
+        .returning({ id: intakeItems.id, seq: intakeItems.seq });
+      return r;
+    }
+  }
+
   let item: { id: string; seq: number };
   if (gapSeq != null) {
     try {
@@ -193,21 +231,14 @@ export async function handleIntakePost(
       item = inserted;
     } catch (err) {
       // Race: another submit took the same gap. Retry with default
-      // nextval so the user still gets a row.
+      // nextval — routed through insertWithSeqRecovery so a drifted
+      // sequence doesn't break the retry too.
       const code = (err as { code?: string } | null)?.code;
       if (code !== "23505") throw err;
-      const [inserted] = await deps.db
-        .insert(intakeItems)
-        .values(baseValues)
-        .returning({ id: intakeItems.id, seq: intakeItems.seq });
-      item = inserted;
+      item = await insertWithSeqRecovery(baseValues);
     }
   } else {
-    const [inserted] = await deps.db
-      .insert(intakeItems)
-      .values(baseValues)
-      .returning({ id: intakeItems.id, seq: intakeItems.seq });
-    item = inserted;
+    item = await insertWithSeqRecovery(baseValues);
   }
 
   await insertAuditEntry(

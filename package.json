@@ -1,6 +1,6 @@
 {
   "name": "@gharikishore/backlog-kit",
-  "version": "1.2.1",
+  "version": "1.2.2",
   "description": "Drop-in admin + bug-capture + triage system for any Next.js + Postgres app. Floating Bug · Feedback widget · magic-link sign-in · admin chrome (AdminHeader/AdminLayout) · Fiori-style launchpad tile menu · full backlog dashboard with state machine + ship-gate + audit log · bundled schema + migrations.",
   "type": "module",
   "main": "./src/index.ts",
