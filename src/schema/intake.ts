@@ -57,6 +57,12 @@ export const intakeItems = pgTable(
     category: text("category"),
     parkedAt: timestamp("parked_at", { withTimezone: true }),
     pointsAwardedAt: timestamp("points_awarded_at", { withTimezone: true }),
+    // #1076 — collaborative-triage foundation. assignee_user_id names
+    // the person who currently owns the work on this intake. NULL = no
+    // explicit assignee (lane/category filtering still routes the work).
+    // FK is at the DB level only — see "SHARED-PACKAGE NOTE" above for
+    // why the Drizzle column intentionally has no .references() call.
+    assigneeUserId: uuid("assignee_user_id"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
@@ -72,6 +78,9 @@ export const intakeItems = pgTable(
     parentIntakeItemIdx: index("intake_items_parent_intake_item_id_idx").on(t.parentIntakeItemId),
     categoryIdx: index("intake_items_category_idx").on(t.category),
     parkedAtIdx: index("intake_items_parked_at_idx").on(t.parkedAt),
+    // #1076 — drives the "Assigned to me" filter on /admin/backlog and
+    // the per-user "my queue" view planned in #1078.
+    assigneeIdx: index("intake_items_assignee_idx").on(t.assigneeUserId),
     seqUnique: uniqueIndex("intake_items_seq_unique").on(t.seq),
   })
 );
@@ -119,6 +128,29 @@ export const intakeItemLinks = pgTable(
 
 export type IntakeItemLink = typeof intakeItemLinks.$inferSelect;
 export type NewIntakeItemLink = typeof intakeItemLinks.$inferInsert;
+
+// #1076 — collaborative-triage foundation. Watchers are users who get
+// notified on activity (state change, comment, mention) but DO NOT own
+// the work — that's the assignee. UNIQUE (intake_item_id, user_id)
+// prevents the same user from being added twice as a watcher.
+export const intakeItemWatchers = pgTable(
+  "intake_item_watchers",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    intakeItemId: uuid("intake_item_id").notNull().references(() => intakeItems.id, { onDelete: "cascade" }),
+    userId: uuid("user_id").notNull(),
+    addedAt: timestamp("added_at", { withTimezone: true }).notNull().defaultNow(),
+    addedByUserId: uuid("added_by_user_id"),
+  },
+  (t) => ({
+    intakeIdx: index("intake_item_watchers_intake_idx").on(t.intakeItemId),
+    userIdx: index("intake_item_watchers_user_idx").on(t.userId),
+    intakeUserUnique: uniqueIndex("intake_item_watchers_intake_user_unique").on(t.intakeItemId, t.userId),
+  })
+);
+
+export type IntakeItemWatcher = typeof intakeItemWatchers.$inferSelect;
+export type NewIntakeItemWatcher = typeof intakeItemWatchers.$inferInsert;
 
 // Post-creation attachments on backlog tickets. R2 migration completed
 // in intake #845 — `data_url` is now a content-addressable R2 key like
