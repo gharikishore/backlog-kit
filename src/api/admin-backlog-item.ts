@@ -1,4 +1,4 @@
-import { eq, and, isNotNull } from "drizzle-orm";
+import { eq, and, isNotNull, or, notInArray } from "drizzle-orm";
 import { intakeItems } from "../schema";
 import { broadcastBacklogChange } from "../lib/backlog-events";
 import { insertAuditEntry } from "../lib/audit";
@@ -191,6 +191,49 @@ export async function handleBacklogItemPatch(
         );
       }
     }
+
+    // #542 piece 3 — block manual META ship/decline/duplicate with
+    // non-terminal children. METAs are umbrellas; they shouldn't reach
+    // a terminal state until the children do. Migration 0064 already
+    // auto-advances META → ready_to_ship when children all terminalize
+    // (and 0046 cascades unblocks). This guard is the manual-override
+    // defense: it blocks a user-driven Ship click on a META that still
+    // has open children. The 409 lists the first 5 open child seqs so
+    // the user can see exactly what's still in flight.
+    const isMeta = before.pageUrl?.startsWith("meta:") ?? false;
+    if (isMeta && TERMINAL_STATES.has(body.state)) {
+      const openChildren = await deps.db
+        .select({ seq: intakeItems.seq })
+        .from(intakeItems)
+        .where(
+          and(
+            or(
+              eq(intakeItems.parentIntakeItemId, before.id),
+              eq(intakeItems.blockedByIntakeItemId, before.id),
+            ),
+            notInArray(intakeItems.state, [
+              "shipped",
+              "declined",
+              "duplicate",
+              "provisioned",
+            ]),
+          ),
+        );
+      if (openChildren.length > 0) {
+        const seqList = openChildren
+          .slice(0, 5)
+          .map((c) => `#${c.seq}`)
+          .join(", ");
+        const more = openChildren.length > 5 ? `, +${openChildren.length - 5} more` : "";
+        return json(
+          {
+            error: `META cannot be ${body.state} while ${openChildren.length} child${openChildren.length === 1 ? "" : "ren"} are still open (${seqList}${more}). Resolve the children first; the auto-advance trigger (migration 0064) will then move this META to ready_to_ship on its own.`,
+          },
+          409,
+        );
+      }
+    }
+
     updates.state = body.state;
     updates.triagedAt = new Date();
     updates.triagedByUserId = adminUser.id;
