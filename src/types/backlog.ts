@@ -78,6 +78,17 @@ export type Item = {
    *  by the consumer's enrichment shim. Null when assigneeUserId is null
    *  or when the user can't be resolved. */
   assigneeLabel: string | null;
+  /** #1082 — watchers on this intake. Empty array when nobody is
+   *  watching. Each entry carries the raw user id + a label composed
+   *  server-side by the consumer's enrichment shim. */
+  watchers: TicketWatcher[];
+};
+
+export type TicketWatcher = {
+  userId: string;
+  label: string;
+  addedAt: string;
+  addedByUserId: string | null;
 };
 
 export type TicketComment = {

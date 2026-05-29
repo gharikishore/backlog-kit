@@ -21,3 +21,4 @@ export * from "./admin-backlog-list";
 export * from "./admin-backlog-events";
 export * from "./admin-backlog-item";
 export * from "./admin-backlog-attachments";
+export * from "./admin-backlog-watchers";

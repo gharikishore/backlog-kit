@@ -64,6 +64,9 @@ export function BacklogCard({
   renderSignupAcceptBtn,
   renderSignupProvisionPanel,
   assigneeOptions = [],
+  watcherOptions = [],
+  onAddWatcher,
+  onRemoveWatcher,
 }: {
   item: Item;
   onTriage: (
@@ -146,6 +149,18 @@ export function BacklogCard({
    * embeds. Label is what the option shows; id is the uuid we patch.
    */
   assigneeOptions?: Array<{ id: string; label: string }>;
+  /**
+   * #1082 — watcher picker source. Same shape as assigneeOptions —
+   * consumer fetches admin-eligible users once and passes the shortlist
+   * down. Empty array hides the "+ watch" picker (useful for read-only
+   * embeds). Existing watchers always render as chips regardless.
+   */
+  watcherOptions?: Array<{ id: string; label: string }>;
+  /** #1082 — POST a watcher add. Called when the user picks from the
+   *  "+ watch" dropdown. Wraps fetch + refresh in the consumer. */
+  onAddWatcher?: (intakeId: string, watcherUserId: string) => Promise<void>;
+  /** #1082 — DELETE a watcher. Called when the × on a chip is clicked. */
+  onRemoveWatcher?: (intakeId: string, watcherUserId: string) => Promise<void>;
 }) {
   const { Button, Lozenge } = useBacklogUI();
   // Fallback to Lightbulb for any kind not in the map (e.g. 'feature', future kinds)
@@ -782,6 +797,61 @@ export function BacklogCard({
               </select>
             </label>
           )}
+          {/* #1082 — watchers chiplist + "+ watch" picker. Each watcher
+              renders as a navy-tinted chip with an × button to remove.
+              Existing watcher chips ALWAYS render (read-only when
+              onRemoveWatcher isn't supplied). The "+ watch" dropdown only
+              renders when watcherOptions is non-empty + onAddWatcher is
+              wired — same gate as the assignee picker.
+              The picker filters out users who are ALREADY watching so
+              they don't show as duplicates. */}
+          {(item.watchers ?? []).map((w) => (
+            <span
+              key={w.userId}
+              className="inline-flex items-center gap-1 text-[11px] uppercase tracking-kicker px-2 py-0.5 rounded-full border text-navy bg-navy/10 border-navy/35"
+              title={`Watching · added ${new Date(w.addedAt).toLocaleDateString()}`}
+            >
+              <span>@{w.label}</span>
+              {onRemoveWatcher && (
+                <button
+                  type="button"
+                  className="opacity-65 hover:opacity-100 leading-none"
+                  onClick={() => onRemoveWatcher(item.id, w.userId)}
+                  title={`Stop ${w.label} watching this intake`}
+                  aria-label={`Remove watcher ${w.label}`}
+                >
+                  ×
+                </button>
+              )}
+            </span>
+          ))}
+          {watcherOptions.length > 0 && onAddWatcher && (() => {
+            const watchedIds = new Set((item.watchers ?? []).map((w) => w.userId));
+            const available = watcherOptions.filter((u) => !watchedIds.has(u.id));
+            if (available.length === 0) return null;
+            return (
+              <label className="inline-flex items-center" title="Add a watcher to this intake">
+                <span className="sr-only">Add watcher</span>
+                <select
+                  value=""
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    if (!v) return;
+                    void onAddWatcher(item.id, v);
+                    // Reset select so picking the same user twice (after
+                    // remove) still fires.
+                    e.currentTarget.value = "";
+                  }}
+                  className="text-[11px] uppercase tracking-kicker px-2 py-0.5 rounded-full border cursor-pointer font-sans transition-colors text-ink/55 bg-transparent border-hair-strong"
+                >
+                  <option value="">+ watch</option>
+                  {available.map((u) => (
+                    <option key={u.id} value={u.id}>@{u.label}</option>
+                  ))}
+                </select>
+              </label>
+            );
+          })()}
           {/* Intake #140: parked/blocked pills removed from the article
               header. Block status now renders as a dedicated horizontal
               strip below the metadata row — both the status display +

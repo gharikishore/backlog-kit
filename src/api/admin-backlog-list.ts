@@ -17,6 +17,7 @@ import type { PgColumn } from "drizzle-orm/pg-core";
 import {
   intakeItems,
   intakeItemComments,
+  intakeItemWatchers,
   agentSessionActivities,
   agentSessions,
 } from "../schema";
@@ -301,9 +302,31 @@ export async function handleBacklogList(
     commentsByTicketId.set(c.intakeItemId, arr);
   }
 
+  // #1082 — watchers per visible ticket. Raw, no label composition;
+  // consumer enrichment shim resolves user ids to handles.
+  const watcherRows = ticketIds.length === 0
+    ? []
+    : await deps.db
+        .select({
+          intakeItemId: intakeItemWatchers.intakeItemId,
+          userId: intakeItemWatchers.userId,
+          addedAt: intakeItemWatchers.addedAt,
+          addedByUserId: intakeItemWatchers.addedByUserId,
+        })
+        .from(intakeItemWatchers)
+        .where(inArray(intakeItemWatchers.intakeItemId, ticketIds));
+
+  const watchersByTicketId = new Map<string, any[]>();
+  for (const w of watcherRows) {
+    const arr = watchersByTicketId.get(w.intakeItemId) ?? [];
+    arr.push(w);
+    watchersByTicketId.set(w.intakeItemId, arr);
+  }
+
   const items = rows.map((r: any) => ({
     ...r,
     comments: commentsByTicketId.get(r.id) ?? [],
+    watchers: watchersByTicketId.get(r.id) ?? [],
   }));
 
   return json({ items, total, page, pageSize });
