@@ -62,6 +62,13 @@ export async function handleBacklogList(
   const stateFilter = url.searchParams.get("state");
   const kindFilter = url.searchParams.get("kind");
   const categoryFilter = url.searchParams.get("category");
+  // #1078 — assignee filter. Two forms:
+  //   ?assignee=unassigned → filter to assignee_user_id IS NULL
+  //   ?assignee=<uuid>     → filter to assignee_user_id = <uuid>
+  // "Assigned to me" is encoded as the consumer translating the
+  // current user's id into the uuid form before issuing the request.
+  // The kit stays user-identity-agnostic — see the schema note above.
+  const assigneeFilter = url.searchParams.get("assignee");
   const q = url.searchParams.get("q")?.trim();
   const sortMode = (url.searchParams.get("sort") ?? "default") as SortMode;
   const pageSizeRaw = parseInt(url.searchParams.get("pageSize") ?? "50", 10);
@@ -120,6 +127,9 @@ export async function handleBacklogList(
       createdInSessionDisplayName: agentSessions.displayName,
       // Raw reporter id — consumer's shim enriches with handle/role.
       reporterUserId: intakeItems.reporterUserId,
+      // #1078 — assignee for the per-card assignee chip + the
+      // assignee filter chips on /admin/backlog.
+      assigneeUserId: intakeItems.assigneeUserId,
     })
     .from(intakeItems)
     .leftJoin(parent, eq(parent.id, intakeItems.duplicateOfIntakeItemId))
@@ -170,6 +180,19 @@ export async function handleBacklogList(
     } else {
       conditions.push(eq(intakeItems.category, categoryFilter));
     }
+  }
+  // #1078 — assignee filter. UUID-shaped values are validated by a
+  // permissive regex to avoid sending malformed input to Postgres.
+  // The kit never accepts the sentinel "me" — consumers translate
+  // their own user id BEFORE building the request URL.
+  if (assigneeFilter) {
+    if (assigneeFilter === "unassigned") {
+      conditions.push(isNull(intakeItems.assigneeUserId));
+    } else if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(assigneeFilter)) {
+      conditions.push(eq(intakeItems.assigneeUserId, assigneeFilter));
+    }
+    // any other value silently ignored — bad input shouldn't 400 the
+    // whole list; the chips will refetch with a valid value.
   }
   if (hasDecision === "yes") conditions.push(isNotNull(intakeItems.decisionChoice));
   if (hasDecision === "no") conditions.push(isNull(intakeItems.decisionChoice));
