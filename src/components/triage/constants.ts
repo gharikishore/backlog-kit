@@ -1,11 +1,16 @@
 import type { ComponentType } from "react";
-import { Bug, MessageSquare, Lightbulb, Layers, UserPlus, Building2 } from "lucide-react";
+import { Bug, MessageSquare, Lightbulb, Layers, UserPlus, Building2, ShieldAlert } from "lucide-react";
 import type { Item, KindFilter, SortMode, StateFilter } from "../../types/backlog";
 
 // Constants shared across the admin/backlog triage UI. The
 // authoritative iconForKind mapping lives here too (specforge intake
 // #910 — single source of truth for kind → icon).
 
+// #1068 — 'compliance_hold' added for the compliance-hold-via-backlog
+// flow (META #1067). An engine evaluation under a pending_review rule
+// files an intake with this kind, parented to a per-rule META, so
+// counsel can review through the existing /admin/backlog triage UI
+// rather than via a parallel surface.
 export const INTAKE_KINDS = [
   "bug",
   "feedback",
@@ -13,6 +18,7 @@ export const INTAKE_KINDS = [
   "feature",
   "contributor_signup",
   "customer_signup",
+  "compliance_hold",
 ] as const;
 export type IntakeKind = (typeof INTAKE_KINDS)[number];
 
@@ -25,6 +31,10 @@ export const KIND_ICON: Record<string, KindIcon> = {
   feature: Layers,
   contributor_signup: UserPlus,
   customer_signup: Building2,
+  // #1068 — ShieldAlert reads as "compliance + flagged for review"; the
+  // shield evokes the gate semantic, the alert dot signals that human
+  // review is required before the held entity proceeds.
+  compliance_hold: ShieldAlert,
 };
 
 /** Safe lookup with a Lightbulb fallback — never returns undefined. */
@@ -80,6 +90,9 @@ export const KIND_FILTER_TONE: Record<KindFilter, "default" | "success" | "dange
   idea: "gold",
   contributor_signup: "success",
   customer_signup: "orange",
+  // #1068 — gold tone matches the legal/compliance lane's existing
+  // visual language (gold reads as "needs attention but not a bug").
+  compliance_hold: "gold",
 };
 
 export const STATE_FILTER_TONE: Record<StateFilter, "default" | "success" | "danger" | "orange" | "navy" | "gold" | "muted"> = {

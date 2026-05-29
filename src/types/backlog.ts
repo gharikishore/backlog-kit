@@ -103,7 +103,11 @@ export type StateFilter =
   | "declined"
   | "duplicate";
 
-export type KindFilter = "all" | "bug" | "feedback" | "idea" | "contributor_signup" | "customer_signup";
+// #1068 — 'compliance_hold' added for the compliance-hold-via-backlog
+// flow. Holds are filed by the engine when a pending_review rule fires
+// on a signup/profile/provision evaluation; counsel reviews them via
+// the existing /admin/backlog triage UI.
+export type KindFilter = "all" | "bug" | "feedback" | "idea" | "contributor_signup" | "customer_signup" | "compliance_hold";
 
 export type SortMode = "default" | "priority" | "newest" | "oldest" | "recent";
 
