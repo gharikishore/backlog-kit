@@ -51,6 +51,8 @@ type Body = {
   title?: string | null;
   description?: string;
   category?: string | null;
+  /** #1077 — assignee. Pass a uuid to assign, null to clear. */
+  assigneeUserId?: string | null;
 };
 
 export type BacklogItemPatchDeps = {
@@ -169,6 +171,25 @@ export async function handleBacklogItemPatch(
       return json({ error: "category must be a string or null." }, 400);
     }
     auditAction = "intake.categorised";
+  }
+
+  // #1077 — assignee assignment. UUID-validated before hitting the FK
+  // column. Consumer is responsible for ensuring the uuid resolves to a
+  // real user; the kit doesn't enforce that (would require depending on
+  // a consumer-specific `users` table — see schema note).
+  if (body.assigneeUserId !== undefined) {
+    if (body.assigneeUserId === null) {
+      updates.assigneeUserId = null;
+      auditAction = "intake.unassigned";
+    } else if (
+      typeof body.assigneeUserId === "string" &&
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(body.assigneeUserId)
+    ) {
+      updates.assigneeUserId = body.assigneeUserId;
+      auditAction = "intake.assigned";
+    } else {
+      return json({ error: "assigneeUserId must be a uuid or null." }, 400);
+    }
   }
 
   if (body.state !== undefined) {

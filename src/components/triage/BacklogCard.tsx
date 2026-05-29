@@ -63,6 +63,7 @@ export function BacklogCard({
   onDragEnd,
   renderSignupAcceptBtn,
   renderSignupProvisionPanel,
+  assigneeOptions = [],
 }: {
   item: Item;
   onTriage: (
@@ -84,6 +85,8 @@ export function BacklogCard({
       description: string;
       // Intake #218: category tag. null clears.
       category: string | null;
+      // #1077: assignee. null clears.
+      assigneeUserId: string | null;
     }>
   ) => Promise<void>;
   reasoningEditingId: string | null;
@@ -136,6 +139,13 @@ export function BacklogCard({
    * role assignment details). Same pattern as renderSignupAcceptBtn.
    */
   renderSignupProvisionPanel?: (item: Item) => React.ReactNode;
+  /**
+   * #1077 — admin-eligible users for the assignee picker. Consumer fetches
+   * once (e.g. from /api/admin/users?systemRole=admin) and passes the
+   * shortlist down. Empty array hides the picker — useful for read-only
+   * embeds. Label is what the option shows; id is the uuid we patch.
+   */
+  assigneeOptions?: Array<{ id: string; label: string }>;
 }) {
   const { Button, Lozenge } = useBacklogUI();
   // Fallback to Lightbulb for any kind not in the map (e.g. 'feature', future kinds)
@@ -745,6 +755,33 @@ export function BacklogCard({
               ))}
             </select>
           </label>
+          {/* #1077 — assignee pill + inline picker. Mirrors the category
+              pattern: native <select> styled as a pill, value="" clears.
+              Renders nothing when the consumer didn't pass assigneeOptions
+              (read-only embeds). The selected label prefers the option's
+              label string over the server-supplied assigneeLabel — the
+              former is freshest while a PATCH is in flight, before the
+              optimistic-or-refetched item.assigneeLabel catches up. */}
+          {assigneeOptions.length > 0 && (
+            <label className="inline-flex items-center" title="Assign this ticket to a user">
+              <span className="sr-only">Assignee</span>
+              <select
+                value={item.assigneeUserId ?? ""}
+                onChange={(e) => onTriage(item.id, { assigneeUserId: e.target.value === "" ? null : e.target.value })}
+                className={[
+                  "text-[11px] uppercase tracking-kicker px-2 py-0.5 rounded-full border cursor-pointer font-sans transition-colors",
+                  item.assigneeUserId
+                    ? "text-success bg-success/10 border-success/35"
+                    : "text-ink/55 bg-transparent border-hair-strong",
+                ].join(" ")}
+              >
+                <option value="">+ assignee</option>
+                {assigneeOptions.map((u) => (
+                  <option key={u.id} value={u.id}>@{u.label}</option>
+                ))}
+              </select>
+            </label>
+          )}
           {/* Intake #140: parked/blocked pills removed from the article
               header. Block status now renders as a dedicated horizontal
               strip below the metadata row — both the status display +

@@ -71,6 +71,13 @@ export type Item = {
   createdInSessionId: string | null;
   createdInSessionDisplayName: string | null;
   comments: TicketComment[];
+  /** #1077 — current assignee (the user who owns the work). NULL when
+   *  no one is explicitly assigned; lane-based routing still applies. */
+  assigneeUserId: string | null;
+  /** #1077 — handle-or-role label for the assignee, composed server-side
+   *  by the consumer's enrichment shim. Null when assigneeUserId is null
+   *  or when the user can't be resolved. */
+  assigneeLabel: string | null;
 };
 
 export type TicketComment = {
