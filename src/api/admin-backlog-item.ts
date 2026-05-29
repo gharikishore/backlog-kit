@@ -361,6 +361,9 @@ export async function handleBacklogItemPatch(
         blockStatus: before.blockStatus,
         blockedByIntakeItemId: before.blockedByIntakeItemId,
         category: before.category,
+        // #1079 — assignee in the audit snapshot so the history pane
+        // can reconstruct assign/reassign transitions (#1080).
+        assigneeUserId: before.assigneeUserId,
       },
       after: {
         state: after.state,
@@ -373,6 +376,7 @@ export async function handleBacklogItemPatch(
         blockStatus: after.blockStatus,
         blockedByIntakeItemId: after.blockedByIntakeItemId,
         category: after.category,
+        assigneeUserId: after.assigneeUserId,
       },
     },
     { db: deps.db, getImpersonatorId: deps.adapter.getImpersonatorId },

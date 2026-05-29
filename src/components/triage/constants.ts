@@ -132,6 +132,10 @@ export const ACTION_LABELS: Record<string, string> = {
   "intake.block_blocked": "Blocked",
   "intake.block_cleared": "Block cleared",
   "intake.block_auto_cleared": "Auto-unblocked",
+  // #1079 — assign/reassign labels for the history timeline (#1080).
+  "intake.assigned": "Assigned",
+  "intake.unassigned": "Unassigned",
+  "intake.categorised": "Categorised",
 };
 
 export const STATE_FLIP_ACTIONS = new Set([

@@ -129,13 +129,50 @@ function FieldDiff({ entry: h }: { entry: HistoryEntry }) {
   return (
     <div className="mt-1 ml-16 space-y-1.5">
       {changes.map((c) => (
-        <FieldChange key={c.key} field={c.key} before={c.before} after={c.after} />
+        <FieldChange
+          key={c.key}
+          field={c.key}
+          before={c.before}
+          after={c.after}
+          metadata={(h.metadata ?? null) as Record<string, unknown> | null}
+        />
       ))}
     </div>
   );
 }
 
-function FieldChange({ field, before, after }: { field: string; before: unknown; after: unknown }) {
+function FieldChange({
+  field,
+  before,
+  after,
+  metadata,
+}: {
+  field: string;
+  before: unknown;
+  after: unknown;
+  metadata?: Record<string, unknown> | null;
+}) {
+  // #1080 — assignee transitions render handles, not uuids. The consumer's
+  // history endpoint enriches metadata.assigneeBefore / .assigneeAfter
+  // (server-side users join), which we prefer here. Falls back to "—" if
+  // the label couldn't be resolved (deleted user) — the uuid is still in
+  // the audit row for forensic lookup.
+  if (field === "assigneeUserId") {
+    const b = metadata && typeof metadata.assigneeBefore !== "undefined"
+      ? (metadata.assigneeBefore as string | null)
+      : null;
+    const a = metadata && typeof metadata.assigneeAfter !== "undefined"
+      ? (metadata.assigneeAfter as string | null)
+      : null;
+    return (
+      <div className="flex items-center gap-1.5 flex-wrap">
+        <span className="font-mono text-[9px] uppercase tracking-[0.15em] opacity-50 w-16 flex-shrink-0">assignee</span>
+        <span className="font-mono opacity-80">{b ? `@${b}` : "—"}</span>
+        <span className="opacity-50">→</span>
+        <span className="font-mono opacity-80">{a ? `@${a}` : "—"}</span>
+      </div>
+    );
+  }
   if (field === "state") {
     return (
       <div className="flex items-center gap-1.5 flex-wrap">
